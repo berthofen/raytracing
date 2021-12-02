@@ -1,14 +1,14 @@
 package main
 
 import (
-	"os"
-	"strconv"
 	"math/rand"
-	"time"
-	vec "raytracing/vector"
-	. "raytracing/objects"
+	"os"
 	. "raytracing/common"
+	. "raytracing/objects"
 	. "raytracing/scene"
+	vec "raytracing/vector"
+	"strconv"
+	"time"
 )
 
 const (
@@ -20,9 +20,6 @@ const (
 
 	cameraHeightX = cameraHeightZ * (float64(resolution_x) / float64(resolution_z))
 	cameraHeightZ = 50.
-	cameraDirX = 0.
-	cameraDirY = 1.
-	cameraDirZ = 0.
 
 	spectatorDistance = -10000.
 
@@ -33,23 +30,22 @@ const (
 )
 
 type header struct {
-	t byte
-	width uint
-	height uint
+	t        byte
+	width    uint
+	height   uint
 	maxColor byte
 }
 
-func(h header) print() []byte {
+func (h header) print() []byte {
 	header := "P" + strconv.Itoa(int(h.t)) + "\n" +
-			strconv.Itoa(int(h.width)) + " " + strconv.Itoa(int(h.height)) + "\n" +
-			strconv.Itoa(int(h.maxColor)) + "\n"
+		strconv.Itoa(int(h.width)) + " " + strconv.Itoa(int(h.height)) + "\n" +
+		strconv.Itoa(int(h.maxColor)) + "\n"
 	return []byte(header)
 }
 
-func(h header) String() string {
+func (h header) String() string {
 	return string(h.print())
 }
-
 
 func init() {
 	rand.Seed(time.Now().UnixNano())
