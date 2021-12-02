@@ -4,43 +4,15 @@ import (
 	"fmt"
 	"math"
 	vec "raytracing/vector"
+	. "raytracing/common"
+	. "raytracing/scene"
 )
 
-const (
-	// resolution needs to be an even number
-	resolution_x = 2000
-	resolution_z = 2000
-	maxColor     = 255
-	colorChannel = 3
-
-	cameraHeightX = cameraHeightZ * (float64(resolution_x) / float64(resolution_z))
-	cameraHeightZ = 50.
-	cameraDirX = 0.
-	cameraDirY = 1.
-	cameraDirZ = 0.
-
-	spectatorDistance = -10000.
-
-	backgroundR = 255
-	backgroundG = 255
-	backgroundB = 255
-)
-
-type Material struct {
-	colorR byte
-	colorG byte
-	colorB byte
-}
-
-type Color struct {
-	r byte
-	g byte
-	b byte
-}
 
 type container interface {
 	contains(a vec.Vector) bool
 }
+
 
 type Camera struct {
 	dir vec.Vector
@@ -50,7 +22,25 @@ type Camera struct {
 	height float64
 	resWidth int
 	resHeight int
+	spectatorDistance float64
+	colorChannel int
 	pixel []vec.Vector
+}
+
+func CameraCreate(dir vec.Vector, dirZ vec.Vector, middle vec.Vector, width float64, height float64, resWidth int, resHeight int, specDist float64, colorChannel int) *Camera {
+	c := Camera{
+		dir,
+		dirZ,
+		middle,
+		width,
+		height,
+		resWidth,
+		resHeight,
+		specDist,
+		colorChannel,
+		nil}
+	c.SetPixels()
+	return &c
 }
 
 func(c *Camera) SetPixels() {
@@ -73,21 +63,13 @@ func(c *Camera) SetPixels() {
 	// fmt.Println(c.pixel)
 }
 
-func CameraCreate(dir vec.Vector, dirZ vec.Vector, middle vec.Vector, width float64, height float64, resWidth int, resHeight int) Camera {
-	return Camera{
-		dir,
-		dirZ,
-		middle,
-		width,
-		height,
-		resWidth,
-		resHeight,
-		nil}
-}
-
 func(c *Camera) Inside(obj container) bool {
 	return obj.contains(c.middle)
 }
+
+
+
+
 
 type Sphere struct {
 	pos vec.Vector
@@ -95,131 +77,96 @@ type Sphere struct {
 	mat Material
 }
 
+func NewSphere(a vec.Vector, r float64, m Material) Sphere {
+	return Sphere{a, r, m}
+}
+
 func (s Sphere) contains(a vec.Vector) bool {
 	return math.Pow(a.X - s.pos.X, 2) + math.Pow(a.Y - s.pos.Y, 2) + math.Pow(a.Z - s.pos.Z, 2) <= math.Pow(s.rad, 2)
 }
 
-
-
-
-
-func createExampleImage(d []byte) {
-	fmt.Println("creating example image")
-	i := 0
-	//posx, posy := 0, 0
-	for i < len(d) {
-			//posx = i%(resolution_x*3)/3
-			//posy = i/(resolution_x*3)
-			//vx := byte(float64(posx) / float64(resolution_x) * float64(maxColor))
-			//vy := byte(float64(posy) / float64(resolution_z) * float64(maxColor))
-			//fmt.Println(i, resolution_x*3, posx, posy)
-			//fmt.Println(byte(float64(posx) / float64(resolution_x) * float64(maxColor)), byte(posy / resolution_z * maxColor))
-			d[i] = backgroundR
-			i++
-			d[i] = backgroundG
-			i++
-			d[i] = backgroundB
-			i++
-	}
-}
-
-func sphereIntersect(a Camera, pixel vec.Vector, cameraDir vec.Vector, s Sphere) *vec.Vector {
+func (s Sphere) Intersect(a Ray) (*vec.Vector, float64, *Material, *vec.Vector) {
 	a1, a2 := 0., 0.
 
-	p := 2. * (cameraDir.X * (pixel.X - s.pos.X) + cameraDir.Y * (pixel.Y - s.pos.Y) + cameraDir.Z * (pixel.Z - s.pos.Z)) / (math.Pow(cameraDir.X, 2) + math.Pow(cameraDir.Y, 2) + math.Pow(cameraDir.Z, 2))
-	q := (math.Pow(pixel.X - s.pos.X, 2) + math.Pow(pixel.Y - s.pos.Y, 2) + math.Pow(pixel.Z - s.pos.Z, 2) - math.Pow(s.rad, 2)) / (math.Pow(cameraDir.X, 2) + math.Pow(cameraDir.Y, 2) + math.Pow(cameraDir.Z, 2))
+	p := 2. * (a.Dir.X * (a.From.X - s.pos.X) + a.Dir.Y * (a.From.Y - s.pos.Y) + a.Dir.Z * (a.From.Z - s.pos.Z)) / (math.Pow(a.Dir.X, 2) + math.Pow(a.Dir.Y, 2) + math.Pow(a.Dir.Z, 2))
+	q := (math.Pow(a.From.X - s.pos.X, 2) + math.Pow(a.From.Y - s.pos.Y, 2) + math.Pow(a.From.Z - s.pos.Z, 2) - math.Pow(s.rad, 2)) / (math.Pow(a.Dir.X, 2) + math.Pow(a.Dir.Y, 2) + math.Pow(a.Dir.Z, 2))
 
 	a1 = -1. * p / 2. + math.Sqrt(math.Pow(p / 2., 2) - q)
 	a2 = -1. * p / 2. - math.Sqrt(math.Pow(p / 2., 2) - q)
 
-	int1 := pixel.Add(cameraDir.MultiplyByScalar(a1))
-	int2 := pixel.Add(cameraDir.MultiplyByScalar(a2))
+	int1 := a.From.Add(a.Dir.MultiplyByScalar(a1))
+	int2 := a.From.Add(a.Dir.MultiplyByScalar(a2))
+
+	var n1, n2 vec.Vector
+
+	if &int1 != nil {
+		n1 = int1.Sub(s.pos).Normalize()
+	}
+	if &int2 != nil {
+		n2 = int2.Sub(s.pos).Normalize()
+	}
 
 	// implementation flawed, should consider only printing object when camera is outside
 	// becomes important for reflections
-	if a.Inside(s) {
-		return nil
-	} else if math.IsNaN(a1) {
-		return nil
-	} else if a1 == a2 && a1 > 0. {
-		return &int1
+	if s.contains(a.From) || (a1 < 0. && a2 < 0.) || math.IsNaN(a1) {
+		return nil, -1., nil, nil
+	} else if a1 == a2 {
+		return &int1, a1, &s.mat, &n1
 	} else {
-		if a1 > 0. && int1.Sub(pixel).Length() < int2.Sub(pixel).Length() {
-			return &int1
+		if a1 > 0. && int1.Sub(a.From).Length() < int2.Sub(a.From).Length() {
+			return &int1, a1, &s.mat, &n1
 		} else if a2 > 0. {
-			return &int2
+			return &int2, a2, &s.mat, &n2
 		} else {
-			return nil
+			return nil, -1., nil, nil
 		}
 	}
 }
 
-func intersects(cameraPos vec.Vector, s Sphere) bool {
-	x1, x2, x3 := 0., 0., 0.
-	if cameraDirX == 0 {
-		x1 = cameraPos.X
-	} else {
-		x1 = (s.pos.X - cameraPos.X) / cameraDirX
-	}
-	if cameraDirY == 0 {
-		x2 = cameraPos.Y
-	} else {
-		x2 = (s.pos.Y - cameraPos.Y) / cameraDirY
-	}
-	if cameraDirZ == 0 {
-		x3 = cameraPos.Z
-	} else {
-		x3 = (s.pos.Z - cameraPos.Z) / cameraDirZ
-	}
-	return s.rad >= vec.Vector{x1,x2,x3}.Sub(s.pos).Length()
+func calcDiffuseLightChannel(channel byte, n *vec.Vector, l *vec.Vector, int *vec.Vector) byte {
+	return byte(math.Min(255, float64(channel) + math.Max(0, math.RoundToEven(n.Dot((*l).Sub(*int).Normalize()) * float64(channel)))))
 }
 
-func CreateExampleSphereImage(a Camera, d []byte) {
+func calcDiffuseLight(m Material, n *vec.Vector, l *vec.Vector, int *vec.Vector) (byte, byte, byte) {
+	return 	calcDiffuseLightChannel(m.ColorR, n, l, int),
+			calcDiffuseLightChannel(m.ColorG, n, l, int),
+			calcDiffuseLightChannel(m.ColorB, n, l, int)
+}
+
+
+
+func CreateExampleSphereImage(a *Camera, sc Scene, d []byte) {
 	fmt.Println("creating example Sphere image")
 
-	s1 := Sphere{vec.Vector{0., 20., 0.}, 15., Material{byte(122), byte(122), byte(0)}}
-	s2 := Sphere{vec.Vector{-5., 50., 10.}, 10., Material{byte(122), byte(50), byte(50)}}
-
-	spec := a.middle.Add(a.dir.MultiplyByScalar(spectatorDistance))
+	spec := a.middle.Add(a.dir.MultiplyByScalar(a.spectatorDistance))
 
 	i := 0
 	for i < len(a.pixel) {
 
-		x := sphereIntersect(a, a.pixel[i], a.pixel[i].Sub(spec), s1)
-		y := sphereIntersect(a, a.pixel[i], a.pixel[i].Sub(spec), s2)
-		xl, yl := -1., -1.
+		var (
+			closest_pos *vec.Vector
+			closest_mat *Material
+			closest_norm *vec.Vector
+		)
+		closest_len := 9999999999.
+		for _,obj := range sc.Objects {
+			x,xl,xm,xn := obj.Intersect(Ray{a.pixel[i], a.pixel[i].Sub(spec)})
 
-		if x != nil {
-			xl = x.Sub(a.pixel[i]).Length()
-		}
-		if y != nil {
-			yl = y.Sub(a.pixel[i]).Length()
-		}
-
-		if x != nil && y != nil {
-			if xl < yl {
-				d[colorChannel * i]     = s1.mat.colorR
-				d[colorChannel * i + 1] = s1.mat.colorG
-				d[colorChannel * i + 2] = s1.mat.colorB
-			} else {
-				d[colorChannel * i]     = s2.mat.colorR
-				d[colorChannel * i + 1] = s2.mat.colorG
-				d[colorChannel * i + 2] = s2.mat.colorB
+			if xl > 0 && xl < closest_len {
+				closest_pos = x
+				closest_len = xl
+				closest_mat = xm
+				closest_norm = xn
 			}
-		} else if x != nil {
-			d[colorChannel * i]     = s1.mat.colorR
-			d[colorChannel * i + 1] = s1.mat.colorG
-			d[colorChannel * i + 2] = s1.mat.colorB
-		} else if y != nil {
-			d[colorChannel * i]     = s2.mat.colorR
-			d[colorChannel * i + 1] = s2.mat.colorG
-			d[colorChannel * i + 2] = s2.mat.colorB
-		} else {
-			d[colorChannel * i]     = backgroundR
-			d[colorChannel * i + 1] = backgroundG
-			d[colorChannel * i + 2] = backgroundB
 		}
 
+		if closest_pos == nil {
+			d[a.colorChannel * i], d[a.colorChannel * i + 1], d[a.colorChannel * i + 2] =
+				sc.AmbCol.R, sc.AmbCol.G, sc.AmbCol.B
+		} else {
+			d[a.colorChannel * i], d[a.colorChannel * i + 1], d[a.colorChannel * i + 2] = 
+				calcDiffuseLight(*closest_mat, closest_norm, &sc.Light.Pos, closest_pos )
+		}
 		i++
 	}
 }

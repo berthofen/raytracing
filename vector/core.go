@@ -1,8 +1,9 @@
 package vector
 
-import "math"
+import (
+	"math"
+)
 
-// Vector - struct holding X Y Z values of a 3D vector
 type Vector struct {
 	X, Y, Z float64
 }
@@ -47,5 +48,9 @@ func (a Vector) Cross(b Vector) Vector {
 }
 
 func (a Vector) Normalize() Vector {
+	return a.MultiplyByScalar(1. / a.Length())
+}
+
+func (a Vector) Inside() Vector {
 	return a.MultiplyByScalar(1. / a.Length())
 }

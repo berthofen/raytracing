@@ -7,6 +7,8 @@ import (
 	"time"
 	vec "raytracing/vector"
 	. "raytracing/objects"
+	. "raytracing/common"
+	. "raytracing/scene"
 )
 
 const (
@@ -24,9 +26,10 @@ const (
 
 	spectatorDistance = -10000.
 
-	backgroundR = 255
+	backgroundR = 0
 	backgroundG = 255
 	backgroundB = 255
+	backgroundInt = 1.
 )
 
 type header struct {
@@ -55,12 +58,29 @@ func init() {
 func main() {
 	h := header{6, resolution_x, resolution_z, maxColor}.print()
 	data := make([]byte, resolution_x * resolution_z * colorChannel)
-	
-	c := CameraCreate(vec.Vector{0., 1., 0.}, vec.Vector{0., 0., 1.}, vec.Vector{0., 0., 0.}, float64(cameraHeightX), float64(cameraHeightZ), resolution_x, resolution_z)
-	c.SetPixels()
 
+	c := CameraCreate(
+		vec.Vector{0., 1., 0.}, 
+		vec.Vector{0., 0., 1.}, 
+		vec.Vector{0., 0., 0.}, 
+		float64(cameraHeightX), 
+		float64(cameraHeightZ), 
+		resolution_x, 
+		resolution_z, 
+		spectatorDistance,
+		colorChannel)
 
-	CreateExampleSphereImage(c, data)
+	var objects []RayIntersector
+	objects = append(objects, NewSphere(vec.Vector{0., 20., 0.}, 15., Material{byte(150), byte(150), byte(0)}))
+	objects = append(objects, NewSphere(vec.Vector{-5., 50., 10.}, 10., Material{byte(60), byte(25), byte(25)}))
+	objects = append(objects, NewSphere(vec.Vector{-5., 20., 20.}, 4., Material{byte(30), byte(30), byte(30)}))
+
+	sc := Scene{Color{backgroundR, backgroundG, backgroundB},
+	 			backgroundInt, 
+	 			LightSource{vec.Vector{-40., -15., 20.}},
+				objects}
+
+	CreateExampleSphereImage(c, sc, data)
 
 	os.WriteFile("/tmp/dat1.ppm", append(h, data...), 0644)
 }
