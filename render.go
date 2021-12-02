@@ -80,3 +80,14 @@ func main() {
 
 	os.WriteFile("/tmp/dat1.ppm", append(h, data...), 0644)
 }
+
+
+
+/*
+To Do:
+seperate light calculation for ambient, diffuse, ...
+add specular lighting, shadow, reflection
+
+cleanup common
+
+*/
