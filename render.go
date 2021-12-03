@@ -86,8 +86,8 @@ func main() {
 
 /*
 To Do:
-seperate light calculation for ambient, diffuse, ...
-add specular lighting, shadow, reflection
+add shadow, reflection
+need to first put raycast into seperate function to use recursion
 
 cleanup common
 
