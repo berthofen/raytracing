@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"math/rand"
 	"os"
 	. "raytracing/common"
@@ -22,12 +21,14 @@ const (
 	cameraHeightX = cameraHeightZ * (float64(resolution_x) / float64(resolution_z))
 	cameraHeightZ = 50.
 
-	spectatorDistance = -10000.
+	spectatorDistance = -100.
 
 	backgroundR   = 0
 	backgroundG   = 255
 	backgroundB   = 255
 	backgroundInt = 1.
+
+	sceneMaxDepth = 4
 )
 
 type header struct {
@@ -59,7 +60,7 @@ func main() {
 	c := CameraCreate(
 		vec.Vector{0., 1., 0.},
 		vec.Vector{0., 0., 1.},
-		vec.Vector{0., 0., 0.},
+		vec.Vector{-13., 0., 13.},
 		float64(cameraHeightX),
 		float64(cameraHeightZ),
 		resolution_x,
@@ -68,20 +69,20 @@ func main() {
 		colorChannel)
 
 	var objects []RayIntersector
-	objects = append(objects, NewSphere(vec.Vector{0., 20., 0.}, 15., Material{Color{150, 150, 0}, .3, 0.5, 1., 50.}))
-	objects = append(objects, NewSphere(vec.Vector{-5., 50., 10.}, 10., Material{Color{60, 25, 25}, 1.0, 1.0, 0., 1.}))
-	objects = append(objects, NewSphere(vec.Vector{-5., 20., 20.}, 4., Material{Color{30, 30, 30}, 2.0, 0., 1., 10.}))
+	objects = append(objects, NewSphere(vec.Vector{0., 20., 0.}, 15., Material{Color{150, 150, 0}, .5, .5, .9, 50.}))
+	objects = append(objects, NewSphere(vec.Vector{-15., 70., 10.}, 10., Material{Color{60, 0, 25}, 1., .9, .01, 1.}))
+	objects = append(objects, NewSphere(vec.Vector{20., 200., 40.}, 80., Material{Color{30, 30, 30}, 1., .5, .8, 50.}))
 
 	sc := Scene{Color{backgroundR, backgroundG, backgroundB},
 		backgroundInt,
-		LightSource{vec.Vector{-20., 15., 30.}},
-		objects}
+		[]LightSource{LightSource{vec.Vector{-20., 15., 30.}, Color{255, 255, 255}, 1.},
+		LightSource{vec.Vector{-200., -200., 100.}, Color{255, 255, 255}, 1.}},
+		objects,
+		sceneMaxDepth}
 
 	CreateExampleSphereImage(c, sc, data)
 
-	fmt.Println(Color{255, 255, 255}.Add(Color{100, 100, 100}))
-
-	os.WriteFile("/Users/jhesselmann/Documents/Projects/go/raytracing/dat1.ppm", append(h, data...), 0644)
+	os.WriteFile("/tmp/dat1.ppm", append(h, data...), 0644)
 }
 
 /*

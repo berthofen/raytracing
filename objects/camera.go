@@ -79,7 +79,7 @@ func (s Sphere) contains(a vec.Vector) bool {
 	return math.Pow(a.X-s.pos.X, 2)+math.Pow(a.Y-s.pos.Y, 2)+math.Pow(a.Z-s.pos.Z, 2) <= math.Pow(s.rad, 2)
 }
 
-func (s Sphere) Intersect(a Ray) (*vec.Vector, float64, *Material, *vec.Vector) {
+func (s Sphere) Intersect(a Ray) (*vec.Vector, float64, *Material, *vec.Vector, *vec.Vector) {
 	a1, a2 := 0., 0.
 
 	p := 2. * (a.Dir.X*(a.From.X-s.pos.X) + a.Dir.Y*(a.From.Y-s.pos.Y) + a.Dir.Z*(a.From.Z-s.pos.Z)) / (math.Pow(a.Dir.X, 2) + math.Pow(a.Dir.Y, 2) + math.Pow(a.Dir.Z, 2))
@@ -99,49 +99,62 @@ func (s Sphere) Intersect(a Ray) (*vec.Vector, float64, *Material, *vec.Vector) 
 	if &int2 != nil {
 		n2 = int2.Sub(s.pos).Normalize()
 	}
+	
+	ref1, ref2 := n1.MultiplyByScalar(2. * a.From.Sub(int1).Dot(n1)).Sub(a.From.Sub(int1)),
+					n2.MultiplyByScalar(2. * a.From.Sub(int2).Dot(n2)).Sub(a.From.Sub(int2))
 
 	if s.contains(a.From) || (a1 < 0. && a2 < 0.) || math.IsNaN(a1) {
-		return nil, -1., nil, nil
+		return nil, -1., nil, nil, nil
 	} else if a1 == a2 {
-		return &int1, a1, &s.mat, &n1
+		return &int1, a1, &s.mat, &n1, &ref1
 	} else {
 		if a1 > 0. && int1.Sub(a.From).Length() < int2.Sub(a.From).Length() {
-			return &int1, a1, &s.mat, &n1
+			return &int1, a1, &s.mat, &n1, &ref1
 		} else if a2 > 0. {
-			return &int2, a2, &s.mat, &n2
+			return &int2, a2, &s.mat, &n2, &ref2
 		} else {
-			return nil, -1., nil, nil
+			return nil, -1., nil, nil, nil
 		}
 	}
 }
 
-func calcSpecular(m Material, viewer *vec.Vector, n *vec.Vector, l *vec.Vector, int *vec.Vector) Color {
-	lint := l.Sub(*int).Normalize()
-	ref := n.MultiplyByScalar(2. * lint.Dot(*n)).Sub(lint).Normalize()
-	view := viewer.Sub(*int).Normalize()
+func calcSpecular(m Material, pixelPos *vec.Vector, n *vec.Vector, lights []LightSource, int *vec.Vector) Color {
+	view := pixelPos.Sub(*int).Normalize()
+	var lint, ref vec.Vector
 
-	if l.Dot(*n) < 0. {
-		return Color{0, 0, 0}
-	} else {
-		return m.Col.Scale(m.Ks * math.Pow(ref.Dot(view), m.Alpha))
+	total := Color{0, 0, 0}
+	for _, light := range lights {
+		lint = light.Pos.Sub(*int).Normalize()
+		ref = n.MultiplyByScalar(2. * lint.Dot(*n)).Sub(lint).Normalize()
+
+		if overlap := ref.Dot(view); overlap > 0. {
+			total = total.Add(light.Col.Scale(m.Ks * light.Intens * math.Pow(overlap, m.Alpha)))
+		}
 	}
+
+	return total
 }
 
-func calcDiffuseL(m Material, n *vec.Vector, l *vec.Vector, int *vec.Vector) Color {
-	//return byte(math.Min(255, float64(channel)+math.Max(0, math.RoundToEven(n.Dot((*l).Sub(*int).Normalize())*float64(channel)))))
-	return m.Col.Scale(m.Kd * n.Dot((*l).Sub(*int).Normalize()))
+func calcDiffuse(m Material, n *vec.Vector, lights []LightSource, int *vec.Vector) Color {
+
+	total := Color{0, 0, 0}
+	for _, light := range lights {
+		total = total.Add(m.Col.Scale(m.Kd * light.Intens * n.Dot((light.Pos).Sub(*int).Normalize())))
+	}
+
+	return total
 }
 
 func calcAmbient(m Material) Color {
 	return m.Col.Scale(m.Ka)
 }
 
-func calcLight(m Material, viewer *vec.Vector, n *vec.Vector, l *vec.Vector, int *vec.Vector) Color {
+func calcLight(m Material, pixelPos *vec.Vector, n *vec.Vector, l []LightSource, int *vec.Vector) Color {
 	var col []Color
 
 	col = append(col, calcAmbient(m))
-	col = append(col, calcDiffuseL(m, n, l, int))
-	col = append(col, calcSpecular(m, viewer, n, l, int))
+	col = append(col, calcDiffuse(m, n, l, int))
+	col = append(col, calcSpecular(m, pixelPos, n, l, int))
 
 	total := Color{0, 0, 0}
 	for _, c := range col {
@@ -154,33 +167,14 @@ func calcLight(m Material, viewer *vec.Vector, n *vec.Vector, l *vec.Vector, int
 func CreateExampleSphereImage(a *Camera, sc Scene, d []byte) {
 	fmt.Println("creating example Sphere image")
 
-	spec := a.middle.Add(a.dir.MultiplyByScalar(a.spectatorDistance))
+	specPos := a.middle.Add(a.dir.MultiplyByScalar(a.spectatorDistance))
 
 	i := 0
 	for i < len(a.pixel) {
 
-		var (
-			closest_pos  *vec.Vector
-			closest_mat  *Material
-			closest_norm *vec.Vector
-		)
-		closest_len := math.Inf(1)
-		for _, obj := range sc.Objects {
-			x, xl, xm, xn := obj.Intersect(Ray{a.pixel[i], a.pixel[i].Sub(spec)})
+		color := castRay(Ray{a.pixel[i], a.pixel[i].Sub(specPos)}, sc, MinDepth)
 
-			if xl > 0 && xl < closest_len {
-				closest_pos = x
-				closest_len = xl
-				closest_mat = xm
-				closest_norm = xn
-			}
-		}
-
-		if closest_pos == nil {
-			writeColor(d[a.colorChannel*i:a.colorChannel*i+3], sc.AmbCol)
-		} else {
-			writeColor(d[a.colorChannel*i:a.colorChannel*i+3], calcLight(*closest_mat, &a.pixel[i], closest_norm, &sc.Light.Pos, closest_pos))
-		}
+		writeColor(d[a.colorChannel*i:a.colorChannel*i+3], color)
 		i++
 	}
 }
@@ -189,4 +183,44 @@ func writeColor(d []byte, a Color) {
 	d[0] = byte(a.R)
 	d[1] = byte(a.G)
 	d[2] = byte(a.B)
+}
+
+func castRay(ray Ray, scene Scene, depth uint) Color {
+		if depth > scene.MaxDepth {
+			return Color{0, 0, 0}
+		}
+
+		var (
+			closest_pos  *vec.Vector
+			closest_mat  *Material
+			closest_norm *vec.Vector
+			closest_refl *vec.Vector
+		)
+		closest_len := math.Inf(1)
+		for _, obj := range scene.Objects {
+			x, xl, xm, xn, xr := obj.Intersect(ray)
+
+			if xl > 0 && xl < closest_len {
+				closest_pos = x
+				closest_len = xl
+				closest_mat = xm
+				closest_norm = xn
+				closest_refl = xr
+			}
+		}
+
+		if closest_pos == nil {
+			if depth == MinDepth {
+				return scene.AmbCol
+			} else {
+				return Color{0, 0, 0}
+			}
+		} else {
+			c := castRay(Ray{*closest_pos, *closest_refl}, scene, depth + 1).Scale(closest_mat.Ks)
+			return calcLight(*closest_mat, &ray.From, closest_norm, scene.Lights, closest_pos).Add(c)
+		}
+}
+
+func doNothing(a interface{}) {
+	return
 }
