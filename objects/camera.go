@@ -185,7 +185,7 @@ func writeColor(d []byte, a Color) {
 
 func castRay(ray Ray, scene Scene, depth uint) Color {
 		if depth > scene.MaxDepth {
-			return Color{0, 0, 0}
+			return scene.AmbCol
 		}
 
 		var (
@@ -211,7 +211,7 @@ func castRay(ray Ray, scene Scene, depth uint) Color {
 			if depth == MinDepth {
 				return scene.AmbCol
 			} else {
-				return Color{0, 0, 0}
+				return scene.AmbCol
 			}
 		} else {
 			c := castRay(Ray{*closest_pos, *closest_refl}, scene, depth + 1).Scale(closest_mat.Kr)
