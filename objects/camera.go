@@ -57,8 +57,6 @@ func (c *Camera) SetPixels() {
 
 		c.pixel[i] = start.Add(dirWidth.MultiplyByScalar(scalarWidth)).Sub(dirHeight.MultiplyByScalar(scalarHeight))
 	}
-
-	// fmt.Println(c.pixel)
 }
 
 func (c *Camera) Inside(obj container) bool {
@@ -216,7 +214,7 @@ func castRay(ray Ray, scene Scene, depth uint) Color {
 				return Color{0, 0, 0}
 			}
 		} else {
-			c := castRay(Ray{*closest_pos, *closest_refl}, scene, depth + 1).Scale(closest_mat.Ks)
+			c := castRay(Ray{*closest_pos, *closest_refl}, scene, depth + 1).Scale(closest_mat.Kr)
 			return calcLight(*closest_mat, &ray.From, closest_norm, scene.Lights, closest_pos).Add(c)
 		}
 }

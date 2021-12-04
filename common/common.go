@@ -7,6 +7,7 @@ type Material struct {
 	Ka    float64 // ambient reflection constant
 	Kd    float64 // diffusive reflection constant
 	Ks    float64 // specular reflection constant
+	Kr    float64 // reflection constant
 	Alpha float64 // shininess
 }
 

@@ -19,13 +19,13 @@ const (
 	colorChannel = 3
 
 	cameraHeightX = cameraHeightZ * (float64(resolution_x) / float64(resolution_z))
-	cameraHeightZ = 50.
+	cameraHeightZ = 20.
 
 	spectatorDistance = -100.
 
-	backgroundR   = 0
-	backgroundG   = 255
-	backgroundB   = 255
+	backgroundR   = 51
+	backgroundG   = 179
+	backgroundB   = 204
 	backgroundInt = 1.
 
 	sceneMaxDepth = 4
@@ -58,9 +58,9 @@ func main() {
 	data := make([]byte, resolution_x*resolution_z*colorChannel)
 
 	c := CameraCreate(
-		vec.Vector{0., 1., 0.},
-		vec.Vector{0., 0., 1.},
-		vec.Vector{-13., 0., 13.},
+		vec.Vector{0., -0.1, -1.},
+		vec.Vector{0.2, 1., 0.},
+		vec.Vector{0., 3., 10.},
 		float64(cameraHeightX),
 		float64(cameraHeightZ),
 		resolution_x,
@@ -68,15 +68,22 @@ func main() {
 		spectatorDistance,
 		colorChannel)
 
+	ivory :=      Material{Color{122, 122, 77}, .0, 0.6,  0.3, 0.1,  50.};
+	glass :=      Material{Color{153, 179, 204}, .0, 0.0,  0.5, 0.1, 125.};
+	red_rubber := Material{Color{77, 26, 26}, .0, 0.9,  0.1, 0.0,  10.};
+	mirror :=     Material{Color{0, 0, 0}, .0, 0.0, 10.0, 0.8, 1425.};
+
 	var objects []RayIntersector
-	objects = append(objects, NewSphere(vec.Vector{0., 20., 0.}, 15., Material{Color{150, 150, 0}, .5, .5, .9, 50.}))
-	objects = append(objects, NewSphere(vec.Vector{-15., 70., 10.}, 10., Material{Color{60, 0, 25}, 1., .9, .01, 1.}))
-	objects = append(objects, NewSphere(vec.Vector{20., 200., 40.}, 80., Material{Color{30, 30, 30}, 1., .5, .8, 50.}))
+	objects = append(objects, NewSphere(vec.Vector{-3., 0., -16.}, 2., ivory))
+	objects = append(objects, NewSphere(vec.Vector{-1., -1.5, -12.}, 2., glass))
+	objects = append(objects, NewSphere(vec.Vector{1.5, -0.5, -18.}, 3., red_rubber))
+	objects = append(objects, NewSphere(vec.Vector{7., 5., -18.}, 4., mirror))
 
 	sc := Scene{Color{backgroundR, backgroundG, backgroundB},
 		backgroundInt,
-		[]LightSource{LightSource{vec.Vector{-20., 15., 30.}, Color{255, 255, 255}, 1.},
-		LightSource{vec.Vector{-200., -200., 100.}, Color{255, 255, 255}, 1.}},
+		[]LightSource{LightSource{vec.Vector{-20., 20., 20.}, Color{255, 255, 255}, 1.5},
+		LightSource{vec.Vector{30., 50., -25.}, Color{255, 255, 255}, 1.8},
+		LightSource{vec.Vector{30., 20., 30.}, Color{255, 255, 255}, 1.7}},
 		objects,
 		sceneMaxDepth}
 
