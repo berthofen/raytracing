@@ -13,8 +13,8 @@ import (
 
 const (
 	// resolution needs to be an even number
-	resolution_x = 1000
-	resolution_z = 1000
+	resolution_x = 3000
+	resolution_z = 3000
 	maxColor     = 255
 	colorChannel = 3
 
@@ -68,10 +68,10 @@ func main() {
 		spectatorDistance,
 		colorChannel)
 
-	ivory :=      Material{Color{122, 122, 77}, .0, 0.6,  0.3, 0.1,  50.};
-	glass :=      Material{Color{153, 179, 204}, .0, 0.0,  0.5, 0.1, 125.};
-	red_rubber := Material{Color{77, 26, 26}, .0, 0.9,  0.1, 0.0,  10.};
-	mirror :=     Material{Color{0, 0, 0}, .0, 0.0, 10.0, 0.8, 1425.};
+	ivory := Material{Color{122, 122, 77}, .0, 0.6, 0.3, 0.1, 50.}
+	glass := Material{Color{153, 179, 204}, .0, 0.0, 0.5, 0.1, 125.}
+	red_rubber := Material{Color{77, 26, 26}, .0, 0.9, 0.1, 0.0, 10.}
+	mirror := Material{Color{0, 0, 0}, .0, 0.0, 10.0, 0.8, 1425.}
 
 	var objects []RayIntersector
 	objects = append(objects, NewSphere(vec.Vector{-3., 0., -16.}, 2., ivory))
@@ -79,17 +79,24 @@ func main() {
 	objects = append(objects, NewSphere(vec.Vector{1.5, -0.5, -18.}, 3., red_rubber))
 	objects = append(objects, NewSphere(vec.Vector{7., 5., -18.}, 4., mirror))
 
+	p := NewPlain(vec.Vector{2, 2, 0},
+		vec.Vector{1, 1, 1},
+		vec.Vector{1, 0, 0},
+		red_rubber,
+		5.,
+		5.)
+
 	sc := Scene{Color{backgroundR, backgroundG, backgroundB},
 		backgroundInt,
 		[]LightSource{LightSource{vec.Vector{-20., 20., 20.}, Color{255, 255, 255}, 1.5},
-		LightSource{vec.Vector{30., 50., -25.}, Color{255, 255, 255}, 1.8},
-		LightSource{vec.Vector{30., 20., 30.}, Color{255, 255, 255}, 1.7}},
+			LightSource{vec.Vector{30., 50., -25.}, Color{255, 255, 255}, 1.8},
+			LightSource{vec.Vector{30., 20., 30.}, Color{255, 255, 255}, 1.7}},
 		objects,
 		sceneMaxDepth}
 
 	CreateExampleSphereImage(c, sc, data)
 
-	os.WriteFile("/tmp/dat1.ppm", append(h, data...), 0644)
+	os.WriteFile("/Users/jhesselmann/Documents/Projects/go/raytracing/dat1.ppm", append(h, data...), 0644)
 }
 
 /*

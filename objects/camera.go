@@ -63,6 +63,44 @@ func (c *Camera) Inside(obj container) bool {
 	return obj.contains(c.middle)
 }
 
+type Plain struct {
+	middle vec.Vector
+	normal vec.Vector
+	dirX   vec.Vector
+	dirY   vec.Vector
+	mat    Material
+	lenX   float64
+	lenY   float64
+	d      float64
+}
+
+func NewPlain(mid vec.Vector, n vec.Vector, dX vec.Vector, m Material, lX float64, lY float64) Plain {
+	return Plain{mid, n.Normalize(), dX.Normalize(), n.Cross(dX).Normalize(), m, lX, lY, mid.Dot(n.Normalize())}
+}
+
+func (p Plain) Contains(a vec.Vector) bool {
+	return a.Dot(p.normal) == p.d &&
+		(math.Abs(a.Sub(p.middle).Dot(p.dirX)) <= p.lenX &&
+			math.Abs(a.Sub(p.middle).Dot(p.dirY)) <= p.lenY)
+}
+
+func (p Plain) Intersect(a Ray) (*vec.Vector, float64, *Material, *vec.Vector, *vec.Vector) {
+	x := (p.d - a.From.Dot(p.normal)) / a.Dir.Dot(p.normal)
+
+	// a_vec * n_vec - d = 0
+	// a.From.Dot(p.normal) + x * a.Dir.Dot(p.normal) = d
+	// x = (p.d - a.From.Dot(p.normal)) / a.Dir.Dot(p.normal)
+
+	if x == 0. {
+		return nil, -1., nil, nil, nil
+	} else if x > 0. {
+		int := a.From.Add(a.Dir.MultiplyByScalar(x))
+
+		return &int, x, &p.mat, nil, nil
+	}
+	return nil, -1., nil, nil, nil
+}
+
 type Sphere struct {
 	pos vec.Vector
 	rad float64
@@ -97,9 +135,9 @@ func (s Sphere) Intersect(a Ray) (*vec.Vector, float64, *Material, *vec.Vector, 
 	if &int2 != nil {
 		n2 = int2.Sub(s.pos).Normalize()
 	}
-	
-	ref1, ref2 := n1.MultiplyByScalar(2. * a.From.Sub(int1).Dot(n1)).Sub(a.From.Sub(int1)),
-					n2.MultiplyByScalar(2. * a.From.Sub(int2).Dot(n2)).Sub(a.From.Sub(int2))
+
+	ref1, ref2 := n1.MultiplyByScalar(2.*a.From.Sub(int1).Dot(n1)).Sub(a.From.Sub(int1)),
+		n2.MultiplyByScalar(2.*a.From.Sub(int2).Dot(n2)).Sub(a.From.Sub(int2))
 
 	if s.contains(a.From) || (a1 < 0. && a2 < 0.) || math.IsNaN(a1) {
 		return nil, -1., nil, nil, nil
@@ -163,7 +201,7 @@ func calcLight(m Material, pixelPos *vec.Vector, n *vec.Vector, l []LightSource,
 }
 
 func CreateExampleSphereImage(a *Camera, sc Scene, d []byte) {
-	fmt.Println("creating example Sphere image")
+	fmt.Println("[INFO] Creating example Sphere image")
 
 	specPos := a.middle.Add(a.dir.MultiplyByScalar(a.spectatorDistance))
 
@@ -184,39 +222,39 @@ func writeColor(d []byte, a Color) {
 }
 
 func castRay(ray Ray, scene Scene, depth uint) Color {
-		if depth > scene.MaxDepth {
+	if depth > scene.MaxDepth {
+		return scene.AmbCol
+	}
+
+	var (
+		closest_pos  *vec.Vector
+		closest_mat  *Material
+		closest_norm *vec.Vector
+		closest_refl *vec.Vector
+	)
+	closest_len := math.Inf(1)
+	for _, obj := range scene.Objects {
+		x, xl, xm, xn, xr := obj.Intersect(ray)
+
+		if xl > 0 && xl < closest_len {
+			closest_pos = x
+			closest_len = xl
+			closest_mat = xm
+			closest_norm = xn
+			closest_refl = xr
+		}
+	}
+
+	if closest_pos == nil {
+		if depth == MinDepth {
+			return scene.AmbCol
+		} else {
 			return scene.AmbCol
 		}
-
-		var (
-			closest_pos  *vec.Vector
-			closest_mat  *Material
-			closest_norm *vec.Vector
-			closest_refl *vec.Vector
-		)
-		closest_len := math.Inf(1)
-		for _, obj := range scene.Objects {
-			x, xl, xm, xn, xr := obj.Intersect(ray)
-
-			if xl > 0 && xl < closest_len {
-				closest_pos = x
-				closest_len = xl
-				closest_mat = xm
-				closest_norm = xn
-				closest_refl = xr
-			}
-		}
-
-		if closest_pos == nil {
-			if depth == MinDepth {
-				return scene.AmbCol
-			} else {
-				return scene.AmbCol
-			}
-		} else {
-			c := castRay(Ray{*closest_pos, *closest_refl}, scene, depth + 1).Scale(closest_mat.Kr)
-			return calcLight(*closest_mat, &ray.From, closest_norm, scene.Lights, closest_pos).Add(c)
-		}
+	} else {
+		c := castRay(Ray{*closest_pos, *closest_refl}, scene, depth+1).Scale(closest_mat.Kr)
+		return calcLight(*closest_mat, &ray.From, closest_norm, scene.Lights, closest_pos).Add(c)
+	}
 }
 
 func doNothing(a interface{}) {
