@@ -74,29 +74,42 @@ type Plain struct {
 	d      float64
 }
 
+const (
+	plainThickness = 1E-10 // to work around infinitely thin objects
+)
+
 func NewPlain(mid vec.Vector, n vec.Vector, dX vec.Vector, m Material, lX float64, lY float64) Plain {
 	return Plain{mid, n.Normalize(), dX.Normalize(), n.Cross(dX).Normalize(), m, lX, lY, mid.Dot(n.Normalize())}
 }
 
 func (p Plain) Contains(a vec.Vector) bool {
-	return a.Dot(p.normal) == p.d &&
-		(math.Abs(a.Sub(p.middle).Dot(p.dirX)) <= p.lenX &&
-			math.Abs(a.Sub(p.middle).Dot(p.dirY)) <= p.lenY)
+	return math.Abs(a.Dot(p.normal) - p.d) < plainThickness && p.inside(a)
+}
+
+func (p Plain) inside(a vec.Vector) bool {
+	return math.Abs(a.Sub(p.middle).Dot(p.dirX)) <= p.lenX &&
+			math.Abs(a.Sub(p.middle).Dot(p.dirY)) <= p.lenY
 }
 
 func (p Plain) Intersect(a Ray) (*vec.Vector, float64, *Material, *vec.Vector, *vec.Vector) {
+	var n vec.Vector
+
 	x := (p.d - a.From.Dot(p.normal)) / a.Dir.Dot(p.normal)
 
 	// a_vec * n_vec - d = 0
 	// a.From.Dot(p.normal) + x * a.Dir.Dot(p.normal) = d
 	// x = (p.d - a.From.Dot(p.normal)) / a.Dir.Dot(p.normal)
 
-	if x == 0. {
+	if p.Contains(a.From) || x == 0. {
 		return nil, -1., nil, nil, nil
-	} else if x > 0. {
-		int := a.From.Add(a.Dir.MultiplyByScalar(x))
-
-		return &int, x, &p.mat, nil, nil
+	} else if int := a.From.Add(a.Dir.MultiplyByScalar(x)); x > 0. && p.inside(int) {
+		if a.Dir.Dot(p.normal) > 0 {
+			n = p.normal.MultiplyByScalar(-1)
+		} else {
+			n = p.normal
+		}
+		refl := n.Reflect(a.From.Sub(int))
+		return &int, x, &p.mat, &n, &refl
 	}
 	return nil, -1., nil, nil, nil
 }
@@ -136,8 +149,8 @@ func (s Sphere) Intersect(a Ray) (*vec.Vector, float64, *Material, *vec.Vector, 
 		n2 = int2.Sub(s.pos).Normalize()
 	}
 
-	ref1, ref2 := n1.MultiplyByScalar(2.*a.From.Sub(int1).Dot(n1)).Sub(a.From.Sub(int1)),
-		n2.MultiplyByScalar(2.*a.From.Sub(int2).Dot(n2)).Sub(a.From.Sub(int2))
+	ref1, ref2 := n1.Reflect(a.From.Sub(int1)),
+		n2.Reflect(a.From.Sub(int2))
 
 	if s.contains(a.From) || (a1 < 0. && a2 < 0.) || math.IsNaN(a1) {
 		return nil, -1., nil, nil, nil
@@ -161,7 +174,7 @@ func calcSpecular(m Material, pixelPos *vec.Vector, n *vec.Vector, lights []Ligh
 	total := Color{0, 0, 0}
 	for _, light := range lights {
 		lint = light.Pos.Sub(*int).Normalize()
-		ref = n.MultiplyByScalar(2. * lint.Dot(*n)).Sub(lint).Normalize()
+		ref = n.Reflect(lint)
 
 		if overlap := ref.Dot(view); overlap > 0. {
 			total = total.Add(light.Col.Scale(m.Ks * light.Intens * math.Pow(overlap, m.Alpha)))

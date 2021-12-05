@@ -13,8 +13,8 @@ import (
 
 const (
 	// resolution needs to be an even number
-	resolution_x = 3000
-	resolution_z = 3000
+	resolution_x = 4000
+	resolution_z = 4000
 	maxColor     = 255
 	colorChannel = 3
 
@@ -28,7 +28,7 @@ const (
 	backgroundB   = 204
 	backgroundInt = 1.
 
-	sceneMaxDepth = 4
+	sceneMaxDepth = 8
 )
 
 type header struct {
@@ -79,12 +79,16 @@ func main() {
 	objects = append(objects, NewSphere(vec.Vector{1.5, -0.5, -18.}, 3., red_rubber))
 	objects = append(objects, NewSphere(vec.Vector{7., 5., -18.}, 4., mirror))
 
-	p := NewPlain(vec.Vector{2, 2, 0},
-		vec.Vector{1, 1, 1},
+	p := NewPlain(vec.Vector{0, -4, -15},
+		vec.Vector{0, 1, 0},
 		vec.Vector{1, 0, 0},
-		red_rubber,
-		5.,
-		5.)
+		mirror,
+		10.,
+		10.)
+
+		// fmt.Println(p)
+
+	objects = append(objects, p)
 
 	sc := Scene{Color{backgroundR, backgroundG, backgroundB},
 		backgroundInt,
@@ -96,7 +100,7 @@ func main() {
 
 	CreateExampleSphereImage(c, sc, data)
 
-	os.WriteFile("/Users/jhesselmann/Documents/Projects/go/raytracing/dat1.ppm", append(h, data...), 0644)
+	os.WriteFile("/tmp/dat1.ppm", append(h, data...), 0644)
 }
 
 /*

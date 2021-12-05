@@ -54,3 +54,7 @@ func (a Vector) Normalize() Vector {
 func (a Vector) Inside() Vector {
 	return a.MultiplyByScalar(1. / a.Length())
 }
+
+func (normal Vector) Reflect(a Vector) Vector {
+	return normal.MultiplyByScalar(2.*a.Dot(normal)).Sub(a)
+}
