@@ -13,8 +13,8 @@ import (
 
 const (
 	// resolution needs to be an even number
-	resolution_x = 4000
-	resolution_z = 4000
+	resolution_x = 1000
+	resolution_z = 1000
 	maxColor     = 255
 	colorChannel = 3
 
@@ -29,6 +29,8 @@ const (
 	backgroundInt = 1.
 
 	sceneMaxDepth = 8
+
+	parallDegree = 6
 )
 
 type header struct {
@@ -98,7 +100,7 @@ func main() {
 		objects,
 		sceneMaxDepth}
 
-	CreateExampleSphereImage(c, sc, data)
+		Render(c, sc, data, parallDegree)
 
 	os.WriteFile("/tmp/dat1.ppm", append(h, data...), 0644)
 }

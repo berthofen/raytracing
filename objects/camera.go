@@ -63,6 +63,8 @@ func (c *Camera) Inside(obj container) bool {
 	return obj.contains(c.middle)
 }
 
+
+
 type Plain struct {
 	middle vec.Vector
 	normal vec.Vector
@@ -113,6 +115,8 @@ func (p Plain) Intersect(a Ray) (*vec.Vector, float64, *Material, *vec.Vector, *
 	}
 	return nil, -1., nil, nil, nil
 }
+
+
 
 type Sphere struct {
 	pos vec.Vector
@@ -167,6 +171,8 @@ func (s Sphere) Intersect(a Ray) (*vec.Vector, float64, *Material, *vec.Vector, 
 	}
 }
 
+
+
 func calcSpecular(m Material, pixelPos *vec.Vector, n *vec.Vector, lights []LightSource, int *vec.Vector) Color {
 	view := pixelPos.Sub(*int).Normalize()
 	var lint, ref vec.Vector
@@ -201,7 +207,7 @@ func calcAmbient(m Material) Color {
 func calcLight(m Material, pixelPos *vec.Vector, n *vec.Vector, l []LightSource, int *vec.Vector) Color {
 	var col []Color
 
-	col = append(col, calcAmbient(m))
+	// col = append(col, calcAmbient(m)) not needed anymore but kept for ...
 	col = append(col, calcDiffuse(m, n, l, int))
 	col = append(col, calcSpecular(m, pixelPos, n, l, int))
 
@@ -213,19 +219,35 @@ func calcLight(m Material, pixelPos *vec.Vector, n *vec.Vector, l []LightSource,
 	return total
 }
 
-func CreateExampleSphereImage(a *Camera, sc Scene, d []byte) {
+func Render(a *Camera, sc Scene, d []byte, parallDegree int) {
 	fmt.Println("[INFO] Creating example Sphere image")
 
+	done := make(chan bool)
+
 	specPos := a.middle.Add(a.dir.MultiplyByScalar(a.spectatorDistance))
+	l := len(a.pixel)
 
+	for i := 0; i < parallDegree; i++ {
+		from, to := i * l / parallDegree, (i + 1) * l / parallDegree
+		go renderWorker(done, a.pixel[from : to], a.colorChannel, specPos, sc, d[a.colorChannel*from : a.colorChannel*to])
+	}
+	for i := 0; i < parallDegree; i++ {
+		<-done
+	}
+
+	return
+}
+
+func renderWorker(done chan<- bool, pixel []vec.Vector, colorChannel int, specPos vec.Vector, sc Scene, data []byte) {
 	i := 0
-	for i < len(a.pixel) {
+	for i < len(pixel) {
 
-		color := castRay(Ray{a.pixel[i], a.pixel[i].Sub(specPos)}, sc, MinDepth)
+		color := castRay(Ray{pixel[i], pixel[i].Sub(specPos)}, sc, MinDepth)
 
-		writeColor(d[a.colorChannel*i:a.colorChannel*i+3], color)
+		writeColor(data[colorChannel*i:colorChannel*i+3], color)
 		i++
 	}
+	done<- true
 }
 
 func writeColor(d []byte, a Color) {
@@ -244,6 +266,7 @@ func castRay(ray Ray, scene Scene, depth uint) Color {
 		closest_mat  *Material
 		closest_norm *vec.Vector
 		closest_refl *vec.Vector
+		// object_ind int
 	)
 	closest_len := math.Inf(1)
 	for _, obj := range scene.Objects {
@@ -255,6 +278,7 @@ func castRay(ray Ray, scene Scene, depth uint) Color {
 			closest_mat = xm
 			closest_norm = xn
 			closest_refl = xr
+			// object_ind = obj_ind
 		}
 	}
 
