@@ -31,3 +31,17 @@ type Ray struct {
 	From vec.Vector
 	Dir vec.Vector
 }
+
+func(a LightSource) Visible(sc Scene, fromPos vec.Vector, fromObj int) bool {
+	vecToLight := a.Pos.Sub(fromPos)
+
+	for ind, obj := range sc.Objects {
+		if ind != fromObj {
+			_, xl, _, _, _ := obj.Intersect(Ray{fromPos, vecToLight})
+			if xl > 0 {
+				return false
+			}
+		}
+	}
+	return true
+}

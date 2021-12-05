@@ -28,9 +28,9 @@ const (
 	backgroundB   = 204
 	backgroundInt = 1.
 
-	sceneMaxDepth = 8
+	sceneMaxDepth = 3
 
-	parallDegree = 6
+	parallDegree = 8
 )
 
 type header struct {
@@ -84,7 +84,7 @@ func main() {
 	p := NewPlain(vec.Vector{0, -4, -15},
 		vec.Vector{0, 1, 0},
 		vec.Vector{1, 0, 0},
-		mirror,
+		red_rubber,
 		10.,
 		10.)
 
@@ -92,11 +92,14 @@ func main() {
 
 	objects = append(objects, p)
 
+	var lights []LightSource
+	lights = append(lights, LightSource{vec.Vector{-20., 20., 20.}, Color{255, 255, 255}, 1.5})
+	lights = append(lights, LightSource{vec.Vector{30., 50., -25.}, Color{255, 255, 255}, 1.8})
+	lights = append(lights, LightSource{vec.Vector{30., 20., 30.}, Color{255, 255, 255}, 1.7})
+
 	sc := Scene{Color{backgroundR, backgroundG, backgroundB},
 		backgroundInt,
-		[]LightSource{LightSource{vec.Vector{-20., 20., 20.}, Color{255, 255, 255}, 1.5},
-			LightSource{vec.Vector{30., 50., -25.}, Color{255, 255, 255}, 1.8},
-			LightSource{vec.Vector{30., 20., 30.}, Color{255, 255, 255}, 1.7}},
+		lights,
 		objects,
 		sceneMaxDepth}
 
@@ -107,9 +110,10 @@ func main() {
 
 /*
 To Do:
-add shadow, reflection
-need to first put raycast into seperate function to use recursion
+add refraction
 
+cleanup input/return types of Intersect, calcLight, 
 cleanup common
+comments
 
 */

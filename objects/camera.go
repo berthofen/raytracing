@@ -173,43 +173,40 @@ func (s Sphere) Intersect(a Ray) (*vec.Vector, float64, *Material, *vec.Vector, 
 
 
 
-func calcSpecular(m Material, pixelPos *vec.Vector, n *vec.Vector, lights []LightSource, int *vec.Vector) Color {
+func calcSpecular(m Material, pixelPos *vec.Vector, n *vec.Vector, light LightSource, int *vec.Vector) Color {
 	view := pixelPos.Sub(*int).Normalize()
 	var lint, ref vec.Vector
 
-	total := Color{0, 0, 0}
-	for _, light := range lights {
-		lint = light.Pos.Sub(*int).Normalize()
-		ref = n.Reflect(lint)
-
-		if overlap := ref.Dot(view); overlap > 0. {
-			total = total.Add(light.Col.Scale(m.Ks * light.Intens * math.Pow(overlap, m.Alpha)))
-		}
+	lint = light.Pos.Sub(*int).Normalize()
+	ref = n.Reflect(lint)
+	if overlap := ref.Dot(view); overlap > 0. {
+		return light.Col.Scale(m.Ks * light.Intens * math.Pow(overlap, m.Alpha))
+	} else {
+		return Color{0,0,0}
 	}
-
-	return total
 }
 
-func calcDiffuse(m Material, n *vec.Vector, lights []LightSource, int *vec.Vector) Color {
+func calcDiffuse(m Material, n *vec.Vector, light LightSource, int *vec.Vector) Color {
 
-	total := Color{0, 0, 0}
-	for _, light := range lights {
-		total = total.Add(m.Col.Scale(m.Kd * light.Intens * n.Dot((light.Pos).Sub(*int).Normalize())))
-	}
-
-	return total
+	return m.Col.Scale(m.Kd * light.Intens * n.Dot((light.Pos).Sub(*int).Normalize()))
 }
 
 func calcAmbient(m Material) Color {
 	return m.Col.Scale(m.Ka)
 }
 
-func calcLight(m Material, pixelPos *vec.Vector, n *vec.Vector, l []LightSource, int *vec.Vector) Color {
+func calcLight(m Material, pixelPos *vec.Vector, n *vec.Vector, scene Scene, int *vec.Vector, object_ind int) Color {
 	var col []Color
 
-	// col = append(col, calcAmbient(m)) not needed anymore but kept for ...
-	col = append(col, calcDiffuse(m, n, l, int))
-	col = append(col, calcSpecular(m, pixelPos, n, l, int))
+	lights := scene.Lights
+
+	// if light is visible calculate diffuse, specular
+	for _, light := range lights {
+		if light.Visible(scene, *int, object_ind) {
+			col = append(col, calcDiffuse(m, n, light, int))
+			col = append(col, calcSpecular(m, pixelPos, n, light, int))
+		}
+	}
 
 	total := Color{0, 0, 0}
 	for _, c := range col {
@@ -266,10 +263,10 @@ func castRay(ray Ray, scene Scene, depth uint) Color {
 		closest_mat  *Material
 		closest_norm *vec.Vector
 		closest_refl *vec.Vector
-		// object_ind int
+		object_ind int
 	)
 	closest_len := math.Inf(1)
-	for _, obj := range scene.Objects {
+	for obj_ind, obj := range scene.Objects {
 		x, xl, xm, xn, xr := obj.Intersect(ray)
 
 		if xl > 0 && xl < closest_len {
@@ -278,7 +275,7 @@ func castRay(ray Ray, scene Scene, depth uint) Color {
 			closest_mat = xm
 			closest_norm = xn
 			closest_refl = xr
-			// object_ind = obj_ind
+			object_ind = obj_ind
 		}
 	}
 
@@ -290,7 +287,7 @@ func castRay(ray Ray, scene Scene, depth uint) Color {
 		}
 	} else {
 		c := castRay(Ray{*closest_pos, *closest_refl}, scene, depth+1).Scale(closest_mat.Kr)
-		return calcLight(*closest_mat, &ray.From, closest_norm, scene.Lights, closest_pos).Add(c)
+		return calcLight(*closest_mat, &ray.From, closest_norm, scene, closest_pos, object_ind).Add(c)
 	}
 }
 
