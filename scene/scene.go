@@ -10,16 +10,16 @@ const (
 )
 
 type Scene struct {
-	AmbCol Color
-	AmbInt float64
-	Lights []LightSource
-	Objects []RayIntersector
+	AmbCol   Color
+	AmbInt   float64
+	Lights   []LightSource
+	Objects  []RayIntersector
 	MaxDepth uint
 }
 
 type LightSource struct {
-	Pos vec.Vector
-	Col Color
+	Pos    vec.Vector
+	Col    Color
 	Intens float64
 }
 
@@ -27,12 +27,20 @@ type RayIntersector interface {
 	Intersect(a Ray) (*vec.Vector, float64, *Material, *vec.Vector, *vec.Vector)
 }
 
-type Ray struct {
-	From vec.Vector
-	Dir vec.Vector
+type RayIntersection struct {
+	Intersection   vec.Vector
+	DistanceFactor float64
+	Material       Material
+	Normal         vec.Vector
+	Reflection     vec.Vector
 }
 
-func(a LightSource) Visible(sc Scene, fromPos vec.Vector, fromObj int) bool {
+type Ray struct {
+	From vec.Vector
+	Dir  vec.Vector
+}
+
+func (a LightSource) Visible(sc Scene, fromPos vec.Vector, fromObj int) bool {
 	vecToLight := a.Pos.Sub(fromPos)
 
 	for ind, obj := range sc.Objects {

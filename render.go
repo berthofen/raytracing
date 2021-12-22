@@ -30,7 +30,7 @@ const (
 
 	sceneMaxDepth = 3
 
-	parallDegree = 8
+	parallDegree = 4
 )
 
 type header struct {
@@ -88,7 +88,7 @@ func main() {
 		10.,
 		10.)
 
-		// fmt.Println(p)
+	// fmt.Println(p)
 
 	objects = append(objects, p)
 
@@ -103,16 +103,16 @@ func main() {
 		objects,
 		sceneMaxDepth}
 
-		Render(c, sc, data, parallDegree)
+	Render(c, sc, data, parallDegree)
 
-	os.WriteFile("/tmp/dat1.ppm", append(h, data...), 0644)
+	os.WriteFile("/Users/jhesselmann/Documents/Projects/go/raytracing/dat1.ppm", append(h, data...), 0644)
 }
 
 /*
 To Do:
 add refraction
 
-cleanup input/return types of Intersect, calcLight, 
+cleanup input/return types of Intersect, calcLight,
 cleanup common
 comments
 

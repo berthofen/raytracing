@@ -63,8 +63,6 @@ func (c *Camera) Inside(obj container) bool {
 	return obj.contains(c.middle)
 }
 
-
-
 type Plain struct {
 	middle vec.Vector
 	normal vec.Vector
@@ -77,7 +75,7 @@ type Plain struct {
 }
 
 const (
-	plainThickness = 1E-10 // to work around infinitely thin objects
+	plainThickness = 1e-10 // to work around infinitely thin objects
 )
 
 func NewPlain(mid vec.Vector, n vec.Vector, dX vec.Vector, m Material, lX float64, lY float64) Plain {
@@ -85,12 +83,12 @@ func NewPlain(mid vec.Vector, n vec.Vector, dX vec.Vector, m Material, lX float6
 }
 
 func (p Plain) Contains(a vec.Vector) bool {
-	return math.Abs(a.Dot(p.normal) - p.d) < plainThickness && p.inside(a)
+	return math.Abs(a.Dot(p.normal)-p.d) < plainThickness && p.inside(a)
 }
 
 func (p Plain) inside(a vec.Vector) bool {
 	return math.Abs(a.Sub(p.middle).Dot(p.dirX)) <= p.lenX &&
-			math.Abs(a.Sub(p.middle).Dot(p.dirY)) <= p.lenY
+		math.Abs(a.Sub(p.middle).Dot(p.dirY)) <= p.lenY
 }
 
 func (p Plain) Intersect(a Ray) (*vec.Vector, float64, *Material, *vec.Vector, *vec.Vector) {
@@ -115,8 +113,6 @@ func (p Plain) Intersect(a Ray) (*vec.Vector, float64, *Material, *vec.Vector, *
 	}
 	return nil, -1., nil, nil, nil
 }
-
-
 
 type Sphere struct {
 	pos vec.Vector
@@ -171,8 +167,6 @@ func (s Sphere) Intersect(a Ray) (*vec.Vector, float64, *Material, *vec.Vector, 
 	}
 }
 
-
-
 func calcSpecular(m Material, pixelPos *vec.Vector, n *vec.Vector, light LightSource, int *vec.Vector) Color {
 	view := pixelPos.Sub(*int).Normalize()
 	var lint, ref vec.Vector
@@ -182,7 +176,7 @@ func calcSpecular(m Material, pixelPos *vec.Vector, n *vec.Vector, light LightSo
 	if overlap := ref.Dot(view); overlap > 0. {
 		return light.Col.Scale(m.Ks * light.Intens * math.Pow(overlap, m.Alpha))
 	} else {
-		return Color{0,0,0}
+		return Color{0, 0, 0}
 	}
 }
 
@@ -225,8 +219,8 @@ func Render(a *Camera, sc Scene, d []byte, parallDegree int) {
 	l := len(a.pixel)
 
 	for i := 0; i < parallDegree; i++ {
-		from, to := i * l / parallDegree, (i + 1) * l / parallDegree
-		go renderWorker(done, a.pixel[from : to], a.colorChannel, specPos, sc, d[a.colorChannel*from : a.colorChannel*to])
+		from, to := i*l/parallDegree, (i+1)*l/parallDegree
+		go renderWorker(done, a.pixel[from:to], a.colorChannel, specPos, sc, d[a.colorChannel*from:a.colorChannel*to])
 	}
 	for i := 0; i < parallDegree; i++ {
 		<-done
@@ -244,7 +238,7 @@ func renderWorker(done chan<- bool, pixel []vec.Vector, colorChannel int, specPo
 		writeColor(data[colorChannel*i:colorChannel*i+3], color)
 		i++
 	}
-	done<- true
+	done <- true
 }
 
 func writeColor(d []byte, a Color) {
@@ -263,7 +257,7 @@ func castRay(ray Ray, scene Scene, depth uint) Color {
 		closest_mat  *Material
 		closest_norm *vec.Vector
 		closest_refl *vec.Vector
-		object_ind int
+		object_ind   int
 	)
 	closest_len := math.Inf(1)
 	for obj_ind, obj := range scene.Objects {
